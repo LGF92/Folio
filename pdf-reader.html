@@ -10,6 +10,12 @@
 <link rel="manifest" href="#" id="manifest-link">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  // Safari fix: disable worker entirely to avoid fake worker warning + blob issues
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  }
+</script>
 <style>
   :root {
     --bg: #0d0d0d;
@@ -646,9 +652,8 @@
 <input type="file" id="file-input" accept=".pdf,application/pdf">
 
 <script>
-// ─── PDF.js Setup ───────────────────────────────────────────
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// PDF.js Setup - worker disabled for Safari compatibility
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 // ─── State ──────────────────────────────────────────────────
 let pdfDoc = null;
@@ -823,8 +828,11 @@ dropZone.onclick = () => fileInput.click();
 fileInput.onchange = e => {
   const file = e.target.files[0];
   if (!file) return;
-  const url = URL.createObjectURL(file);
-  loadPDF({ url }, file.name);
+  const reader = new FileReader();
+  reader.onload = ev => {
+    loadPDF({ data: ev.target.result }, file.name);
+  };
+  reader.readAsArrayBuffer(file);
 };
 
 // Drag & drop
@@ -844,7 +852,11 @@ canvasContainer.addEventListener('drop', e => {
   e.preventDefault();
   const file = e.dataTransfer.files[0];
   if (file && file.type === 'application/pdf') {
-    loadPDF({ url: URL.createObjectURL(file) }, file.name);
+    const reader = new FileReader();
+    reader.onload = ev => {
+      loadPDF({ data: ev.target.result }, file.name);
+    };
+    reader.readAsArrayBuffer(file);
   }
 });
 
